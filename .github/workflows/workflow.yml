@@ -22,24 +22,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: Debug package.json in PR
-        run: |
-          echo "EVENT: $GITHUB_EVENT_NAME"
-          echo "SHA: $GITHUB_SHA"
-          echo "REF: $GITHUB_REF"
-          pwd
-          ls -la
-          echo "---- search package.json ----"
-          find . -maxdepth 4 -name package.json -print -exec ls -la {} \; -exec wc -c {} \; -exec cat -n {} \;
-
-
       - name: Install Dependencies
-        working-directory: deployment_microservice
         run: npm install
 
-
       - name: Start service and health check
-        working-directory: deployment_microservice
         run: |
           node appointment-service.js &
           sleep 3
@@ -56,10 +42,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build Docker image
-        working-directory: deployment_microservice
         run: |
           IMAGE_URI="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
           docker build -t "$IMAGE_URI" .
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
- 
