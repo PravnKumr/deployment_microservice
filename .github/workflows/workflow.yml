@@ -40,3 +40,36 @@ jobs:
         with:
           name: npm-package
           path: "*.tgz"
+
+      - name: Configure AWS credentials (from GitHub Secrets)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+
+      - name: Compute Docker tags
+        id: tags
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: |
+          IMAGE="${{ vars.ECR_REGISTRY }}"
+          TAG="pr-${{ steps.tags.outputs.pr_number }}-${{ steps.tags.outputs.short_sha }}"
+          docker build -t "${IMAGE}:${TAG}" .
+          docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest-pr"
+
+      - name: Push Docker image to ECR
+        run: |
+          IMAGE="${{ vars.ECR_REGISTRY }}"
+          TAG="pr-${{ steps.tags.outputs.pr_number }}-${{ steps.tags.outputs.short_sha }}"
+          docker push "${IMAGE}:${TAG}"
+          docker push "${IMAGE}:latest-pr"
