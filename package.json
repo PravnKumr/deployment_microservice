@@ -1,0 +1,19 @@
+{
+  "name": "appointment-service",
+  "version": "1.0.0",
+  "description": "Simple Appointment Microservice using Express",
+  "main": "appointment-service.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node appointment-service.js",
+    "dev": "nodemon appointment-service.js"
+  },
+  "author": "Praveen Kumar",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}

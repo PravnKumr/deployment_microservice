@@ -1,13 +1,8 @@
-name: Build & Push to ECR
+name: PR - Build & Validate
 
 on:
   pull_request:
     branches: ["main"]
-
-env:
-  AWS_REGION: ap-southeast-2
-  ECR_REGISTRY: 333813598365.dkr.ecr.ap-southeast-2.amazonaws.com
-  ECR_REPOSITORY: hackthon/team2
 
 jobs:
   build:
@@ -17,13 +12,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Show package.json bytes (this will reveal the real problem)
+        run: |
+          ls -la package.json || true
+          wc -c package.json || true
+          head -n 50 package.json || true
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Dependencies
-        run: npm install
+      - name: Install deps
+        run: npm ci
 
       - name: Start service and health check
         run: |
@@ -31,18 +32,5 @@ jobs:
           sleep 3
           curl -f http://localhost:3001/health
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.access_key }}
-          aws-secret-access-key: ${{ secrets.secret_key }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build Docker image
-        run: |
-          IMAGE_URI="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
-          docker build -t "$IMAGE_URI" .
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+      - name: Docker build (validate Dockerfile)
+        run: docker build -t pr-check:${{ github.sha }} .

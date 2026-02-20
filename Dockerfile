@@ -1,15 +1,16 @@
-# ---- Base image ----
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy everything
+# Copy only package files first (better caching)
+COPY package*.json ./
+
+# Install dependencies (prod)
+RUN npm ci --omit=dev
+
+# Copy application code
 COPY . .
 
-# Install dependencies only if package.json exists (works for repos that may not have it)
-RUN if [ -f package.json ]; then \
-      npm ci --omit=dev || npm install --omit=dev; \
-    fi
+EXPOSE 3001
 
-# Run your script
 CMD ["node", "appointment-service.js"]
