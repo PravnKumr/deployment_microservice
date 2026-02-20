@@ -73,7 +73,7 @@ jobs:
         run: |
           # Example ECR_REGISTRY value:
           # 123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/appointment-service
-          echo "IMAGE_URI=${{ vars.ECR_REGISTRY }}" >> $GITHUB_ENV
+          echo "IMAGE_URI=${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY }}" >> $GITHUB_ENV
           echo "IMAGE_TAG=pr-${{ github.event.pull_request.number }}-${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Build Docker image (tagged for ECR)
