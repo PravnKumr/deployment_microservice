@@ -52,13 +52,23 @@ jobs:
           push: false
           tags: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
 
-      - name: Configure AWS credentials
+      - name: Configure base AWS credentials (from GitHub Secrets)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Create STS session token and export temporary creds
+        shell: bash
+        run: |
+            CREDS_JSON=$(aws sts get-session-token --duration-seconds 3600)
+
+            export AKID=$(echo "$CREDS_JSON" | jq -r '.Credentials.AccessKeyId')
+            export SAK=$(echo "$CREDS_JSON" | jq -r '.Credentials.SecretAccessKey')
+            export STK=$(echo "$CREDS_JSON" | jq -r '.Credentials.SessionToken')
+
+            echo "AWS_ACCESS_KEY_ID=$AKID" >> $GITHUB_ENV
+            echo "AWS_SECRET_ACCESS_KEY=$SAK" >> $GITHUB_ENV
+            echo "AWS_SESSION_TOKEN=$STK" >> $GITHUB_ENV
   
