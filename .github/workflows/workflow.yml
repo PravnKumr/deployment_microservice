@@ -3,8 +3,7 @@ name: CI (PR) + ECR Push (main)
 on:
   pull_request:
     branches: ["main"]
-  push:
-    branches: ["main"]
+
 
 permissions:
   contents: read
@@ -50,8 +49,5 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
-          tags: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
-
-
-
-  
+          tags: |
+            appointment-service:pr-${{ github.event.pull_request.number }}-${{ github.sha }}
