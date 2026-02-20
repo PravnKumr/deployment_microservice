@@ -1,28 +1,30 @@
-name: PR to main - NPM Build & Package
+name: CI (PR) + ECR Push (main)
 
 on:
   pull_request:
+    branches: ["main"]
+  push:
     branches: ["main"]
 
 permissions:
   contents: read
 
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+
 jobs:
-  npm_build_and_package:
+  pr_npm_build_and_package:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
       - name: Build (if present)
         run: |
@@ -32,44 +34,35 @@ jobs:
             echo "No build script found in package.json. Skipping npm run build."
           fi
 
-      - name: Package (npm pack)
-        run: npm pack
+      - run: npm pack
 
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: npm-package
           path: "*.tgz"
 
-      - name: Configure AWS credentials (from GitHub Secrets)
+  main_build_and_push_ecr:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # AWS creds from Secrets (only safe on push to main)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-
-      - name: Compute Docker tags
-        id: tags
+      - name: Build, tag and push image
         run: |
+          IMAGE="${{ vars.ECR_REPO }}"
           SHORT_SHA="${GITHUB_SHA::7}"
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
-      - name: Build Docker image
-        run: |
-          IMAGE="${{ vars.ECR_REGISTRY }}"
-          TAG="pr-${{ steps.tags.outputs.pr_number }}-${{ steps.tags.outputs.short_sha }}"
-          docker build -t "${IMAGE}:${TAG}" .
-          docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest-pr"
-
-      - name: Push Docker image to ECR
-        run: |
-          IMAGE="${{ vars.ECR_REGISTRY }}"
-          TAG="pr-${{ steps.tags.outputs.pr_number }}-${{ steps.tags.outputs.short_sha }}"
-          docker push "${IMAGE}:${TAG}"
-          docker push "${IMAGE}:latest-pr"
+          docker build -t "${IMAGE}:sha-${SHORT_SHA}" -t "${IMAGE}:latest" .
+          docker push "${IMAGE}:sha-${SHORT_SHA}"
+          docker push "${IMAGE}:latest"
