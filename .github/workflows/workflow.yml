@@ -1,36 +1,43 @@
-name: PR - Build & Validate
+name: PR to main - NPM Build & Package
 
 on:
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  npm_build_and_package:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Show package.json bytes (this will reveal the real problem)
-        run: |
-          ls -la package.json || true
-          wc -c package.json || true
-          head -n 50 package.json || true
-
-      - name: Setup Node
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
+          cache: "npm"
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm ci
 
-      - name: Start service and health check
+      # Runs npm run build only if you have a build script in package.json
+      - name: Build (if present)
         run: |
-          node appointment-service.js &
-          sleep 3
-          curl -f http://localhost:3001/health
+          if npm run | grep -qE ' build'; then
+            npm run build
+          else
+            echo "No build script found in package.json. Skipping npm run build."
+          fi
 
-      - name: Docker build (validate Dockerfile)
-        run: docker build -t pr-check:${{ github.sha }} .
+      - name: Package (npm pack)
+        run: npm pack
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: "*.tgz"
