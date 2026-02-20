@@ -52,6 +52,12 @@ jobs:
           push: false
           tags: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
 
-
+      - name: Validate ECR repo variable
+        shell: bash
+        run: |
+            if [ -z "${{ vars.ECR_REGISTRY }}" ]; then
+            echo "ECR_REPO variable is empty/missing. Set repo variable ECR_REPO to: 333813598365.dkr.ecr.ap-southeast-2.amazonaws.com/hackthon/team2"
+            exit 1
+            fi
 
   
