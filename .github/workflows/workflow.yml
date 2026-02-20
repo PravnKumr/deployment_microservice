@@ -1,6 +1,3 @@
-
-
-
 name: Build & Push to ECR
 
 on:
@@ -20,21 +17,33 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-   
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Dependencies (if package.json exists)
+      - name: Debug package.json in PR
         run: |
-          if [ -f package.json ]; then
-            npm install
-          fi
+          echo "EVENT: $GITHUB_EVENT_NAME"
+          echo "SHA: $GITHUB_SHA"
+          echo "REF: $GITHUB_REF"
+          pwd
+          ls -la
+          echo "---- search package.json ----"
+          find . -maxdepth 4 -name package.json -print -exec ls -la {} \; -exec wc -c {} \; -exec cat -n {} \;
 
-      - name: Run Node Script
-        run: node appointment-service.js
 
+      - name: Install Dependencies
+        working-directory: deployment_microservice
+        run: npm install
+
+
+      - name: Start service and health check
+        working-directory: deployment_microservice
+        run: |
+          node appointment-service.js &
+          sleep 3
+          curl -f http://localhost:3001/health
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -46,22 +55,11 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-
       - name: Build Docker image
+        working-directory: deployment_microservice
         run: |
           IMAGE_URI="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
           docker build -t "$IMAGE_URI" .
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      - name: Push Docker image to ECR (only on main push)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          docker push "$IMAGE_URI"
-
-
-      - name: Tag & Push latest (only on main push)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          LATEST_URI="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest"
-          docker tag "$IMAGE_URI" "$LATEST_URI"
-          docker push "$LATEST_URI"
+ 
