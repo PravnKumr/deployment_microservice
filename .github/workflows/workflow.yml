@@ -50,7 +50,7 @@ jobs:
           file: ./Dockerfile
           push: false
           tags: |
-            appointment-service:pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+            appointment-service:pr-${{ github.event.pull_request.number }}
 
       - name: Show built images
         run: docker images | head -n 20
