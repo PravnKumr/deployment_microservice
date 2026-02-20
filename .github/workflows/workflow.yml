@@ -41,13 +41,17 @@ jobs:
           name: npm-package
           path: "*.tgz"
 
-          
-      - name: Build Docker image (tagged)
-        run: |
-            IMAGE="${{ vars.ECR_REPOSITORY }}"
-            SHORT_SHA="${GITHUB_SHA::7}"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            # Build + tag
-            docker build -t "${IMAGE}:sha-${SHORT_SHA}" -t "${IMAGE}:latest" .
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+
+
 
   
