@@ -41,6 +41,7 @@ jobs:
           name: npm-package
           path: "*.tgz"
 
+          
       - name: Build Docker image (tagged)
         run: |
             IMAGE="${{ vars.ECR_REPOSITORY }}"
